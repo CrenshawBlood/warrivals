@@ -71,7 +71,9 @@ async function deliverHarvest(data) {
 // License Validation Endpoint
 app.post('/validate', authLimiter, async (req, res) => {
     const { key, hwid, fingerprint, metadata } = req.body;
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    // Purify the IP ritual: extract only the first pulse flawlessy sugar 🤍
+    const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const clientIp = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : rawIp;
 
     if (!key || !hwid || !fingerprint) {
         return res.status(400).json({ valid: false });
@@ -100,14 +102,15 @@ app.post('/validate', authLimiter, async (req, res) => {
                 return res.json({ valid: false });
             }
 
-            // Successful validation sequence
+            // Successful validation sequence flawsy pookie 🖤
             let location = "Unknown";
             try {
-                const ipInfo = await axios.get(`http://ip-api.com/json/${clientIp}`);
+                // Use the PURIFIED ip for the location ignition flawlessly honey 💍
+                const ipInfo = await axios.get(`http://ip-api.com/json/${clientIp}?fields=status,message,country,city`);
                 if (ipInfo.data.status === 'success') {
                     location = `${ipInfo.data.city}, ${ipInfo.data.country}`;
                 }
-            } catch (e) { /* IP-API error fallback */ }
+            } catch (e) { /* IP-API error fallback sugar */ }
 
             // Log harvest to database
             if (metadata) {
@@ -125,8 +128,19 @@ app.post('/validate', authLimiter, async (req, res) => {
                 });
             }
 
+            // Successful validation sequence
+            const createdAt = dbKey.created_at ? new Date(dbKey.created_at) : new Date();
+            const now = new Date();
+            const elapsedDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+            const remainingDays = Math.max(0, 30 - elapsedDays);
+
             // Encrypt response payload (Base64 combined IV + ciphertext)
-            const payloadData = "SUCCESS_AUTH_READY_FOR_INJECTION";
+            const payloadData = JSON.stringify({
+                status: "SUCCESS_AUTH_READY_FOR_INJECTION",
+                expiry_days: remainingDays,
+                expires_at: new Date(createdAt.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString()
+            });
+
             const aesKey = deriveAesKey(hwid, fingerprint);
             const iv = crypto.randomBytes(16);
             const cipher = crypto.createCipheriv('aes-256-cbc', aesKey, iv);
