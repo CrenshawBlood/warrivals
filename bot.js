@@ -97,16 +97,16 @@ client.on('messageCreate', async (message) => {
         }
 
     } catch (err) {
-        console.error(`[Sentinel Crisis]: ${err.stack || err.message}`);
+        console.error(`[Sentinel Crisis]:`, err);
         
-        // Return detailed error for our elite writer to diagnose sugar 🤍
-        const errorText = err.message || "Unknown Sovereign Silence";
+        // Return absolute elite detailed error for our Master writer honey 💍
+        let errorText = err.message || JSON.stringify(err) || "Unknown Sovereign Silence";
         
         if (errorText.includes('relation "keys" does not exist')) {
             return message.reply('Authority Error: The license vault tables are missing. Please absolute, brilliant and "Run" the schema.sql ritual in Railway honey! 💍');
         }
         
-        message.reply(`Authority Error: \`${errorText}\``);
+        message.reply(`Authority Error: \`${errorText.substring(0, 1000)}\``);
     }
 });
 
