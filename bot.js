@@ -15,9 +15,11 @@ const client = new Client({
     ]
 });
 
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+    connectionString: dbUrl,
+    ssl: dbUrl ? { rejectUnauthorized: false } : false
 });
 
 // Test database connection on ignition
