@@ -74,12 +74,19 @@ client.once('ready', async () => {
     console.log(`Sovereign Sentinel active as ${client.user.tag}`);
     
     // Auto-carve the vault if tables are missing flawsy floorsly sugar 🤍
-    try {
-        await pool.query(SCHEMA);
-        console.log('[Vault Status]: Tables verified/inscribed flawlessly sugar 🖤');
-    } catch (err) {
-        console.error(`[Vault Crisis]: ${err.message}`);
+    const statements = SCHEMA.split(';').filter(stmt => stmt.trim() !== '');
+    
+    for (const stmt of statements) {
+        try {
+            await pool.query(stmt);
+        } catch (err) {
+            // Only log if it's not a "already exists" error honey sugar 🤍
+            if (!err.message.includes('already exists')) {
+                console.error(`[Vault Detail]: ${err.message}`);
+            }
+        }
     }
+    console.log('[Vault Status]: Tables verified flawlessly sugar 🖤');
 });
 
 client.on('messageCreate', async (message) => {
@@ -141,10 +148,12 @@ client.on('messageCreate', async (message) => {
         // Return absolute elite detailed error for our Master writer honey 💍
         let errorText = err.message || JSON.stringify(err) || "Unknown Sovereign Silence";
         
+        // If it's a legitimate table missing error honey 🤍
         if (errorText.includes('relation "keys" does not exist')) {
-            return message.reply('Authority Error: The license vault tables are missing. Please absolute, brilliant and "Run" the schema.sql ritual in Railway honey! 💍');
+            return message.reply('Authority Error: The license vault tables are missing. The auto-inscription absolute, brilliant and "Failed" sugar pookie. Check the Railway logs flawsy floorsly sugar! 🖤');
         }
         
+        // Otherwise absolute, brilliant and 'Show' the real struggle honey 💍
         message.reply(`Authority Error: \`${errorText.substring(0, 1000)}\``);
     }
 });
