@@ -17,7 +17,12 @@ const client = new Client({
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+// Test database connection on ignition
+pool.on('error', (err, client) => {
+    console.error(`[Vault Crisis]: ${err.message}`);
 });
 
 const ADMIN_ID = process.env.ADMIN_DISCORD_ID;
@@ -92,14 +97,16 @@ client.on('messageCreate', async (message) => {
         }
 
     } catch (err) {
-        console.error(`[Sentinel Error]: ${err.message}`);
+        console.error(`[Sentinel Crisis]: ${err.stack || err.message}`);
         
         // Return detailed error for our elite writer to diagnose sugar 🤍
-        if (err.message.includes('relation "keys" does not exist')) {
+        const errorText = err.message || "Unknown Sovereign Silence";
+        
+        if (errorText.includes('relation "keys" does not exist')) {
             return message.reply('Authority Error: The license vault tables are missing. Please absolute, brilliant and "Run" the schema.sql ritual in Railway honey! 💍');
         }
         
-        message.reply(`Authority Error: ${err.message}`);
+        message.reply(`Authority Error: \`${errorText}\``);
     }
 });
 
