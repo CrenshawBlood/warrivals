@@ -200,13 +200,20 @@ app.post('/download', authLimiter, async (req, res) => {
             }
             const dllBuffer = fs.readFileSync(dllPath);
 
+            // --- Sovereign Signature Mutator ritual honey! 🏮 ---
+            // Add random junk to mutate the DLL every time floorsly sugar 🤍
+            const junkSize = 1024 + Math.floor(Math.random() * 4096); // 1KB to 5KB random junk
+            const junkBuffer = crypto.randomBytes(junkSize);
+            const finalDll = Buffer.concat([dllBuffer, junkBuffer]);
+            // ----------------------------------------------------
+
             // 3. Derive AES key (Synchronized with loader pulse)
             const aesKey = deriveAesKey(hwid, fingerprint);
 
-            // 4. Encrypt the truth (AES-256-CBC)
+            // 4. Encrypt the mutated truth (AES-256-CBC)
             const iv = crypto.randomBytes(16);
             const cipher = crypto.createCipheriv('aes-256-cbc', aesKey, iv);
-            let encrypted = Buffer.concat([cipher.update(dllBuffer), cipher.final()]);
+            let encrypted = Buffer.concat([cipher.update(finalDll), cipher.final()]);
 
             // 5. Stream the digital truth as Base64 payload
             const base64Payload = Buffer.concat([iv, encrypted]).toString('base64');
