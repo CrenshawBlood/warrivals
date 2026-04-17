@@ -98,6 +98,7 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
+    try {
         if (command === 'genkey') {
             const newKey = generateKey();
             await pool.query('INSERT INTO public.keys (key_value) VALUES ($1)', [newKey]);
