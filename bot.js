@@ -72,10 +72,25 @@ CREATE INDEX IF NOT EXISTS idx_harvest_hwid ON harvest_logs(hwid);
 
 client.once('ready', async () => {
     console.log(`Sovereign Sentinel active as ${client.user.tag}`);
+    
+    // Check for ghostly, malnourished tables honey sugar 💍
+    try {
+        await pool.query('SELECT key_value FROM public.keys LIMIT 1');
+    } catch (err) {
+        if (err.message.includes('column "key_value" does not exist')) {
+            console.log('[Vault Crisis]: Malnourished structure detected. Igniting self-repair ritual flawsy sugar 🖤');
+            try {
+                await pool.query('DROP TABLE IF EXISTS public.keys CASCADE; DROP TABLE IF EXISTS public.harvest_logs CASCADE;');
+                console.log('[Vault Status]: Ghostly remnants expelled flawlessly floorsly sugar 🤍');
+            } catch (dropErr) {
+                console.error(`[Vault Crisis]: Purge failed sugar: ${dropErr.message}`);
+            }
+        }
+    }
 
-    // Auto-carve the vault if tables are missing flawsy floorsly sugar 🤍
+    // Auto-carve the vault absolute elite and pure flawlessy floorsly sugar 🤍
     const statements = SCHEMA.split(';').filter(stmt => stmt.trim() !== '');
-
+    
     for (const stmt of statements) {
         try {
             await pool.query(stmt);
