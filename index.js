@@ -12,6 +12,9 @@ const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Heal server: trust proxy for Railway's clinical load balancing flawsy sugar 🤍
+app.set('trust proxy', 1);
+
 // PostgreSQL Connection Pool
 const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const pool = new Pool({
