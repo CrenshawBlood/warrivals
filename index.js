@@ -4,6 +4,8 @@
 
 require('dotenv').config();
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { Pool } = require('pg');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
@@ -147,10 +149,10 @@ app.post('/validate', authLimiter, async (req, res) => {
             const aesKey = deriveAesKey(hwid, fingerprint);
             const iv = crypto.randomBytes(16);
             const cipher = crypto.createCipheriv('aes-256-cbc', aesKey, iv);
-            
+
             let encrypted = cipher.update(payloadData, 'utf8');
             encrypted = Buffer.concat([encrypted, cipher.final()]);
-            
+
             const base64Response = Buffer.concat([iv, encrypted]).toString('base64');
 
             res.json({
@@ -165,6 +167,61 @@ app.post('/validate', authLimiter, async (req, res) => {
         // Log critical failure without leaking details to client
         console.error(`Validation failure: ${err.message}`);
         res.status(500).json({ valid: false });
+    }
+});
+
+// Remote DLL Retrieval Endpoint (Sovereign Siphon)
+app.post('/download', authLimiter, async (req, res) => {
+    const { key, hwid, fingerprint } = req.body;
+
+    if (!key || !hwid || !fingerprint) {
+        return res.status(400).json({ error: "Pulse incomplete" });
+    }
+
+    try {
+        const client = await pool.connect();
+        try {
+            // 1. Verify key is valid and bound (Reuse validation ritual)
+            const result = await client.query('SELECT * FROM keys WHERE key_value = $1 AND is_active = TRUE', [key]);
+            
+            if (result.rows.length === 0) {
+                return res.status(403).json({ error: "Access Denied" });
+            }
+
+            const dbKey = result.rows[0];
+            if (dbKey.bound_hwid && (dbKey.bound_hwid !== hwid || dbKey.bound_fingerprint !== fingerprint)) {
+                return res.status(403).json({ error: "Hardware Mismatch" });
+            }
+
+            // 2. Read the clinical truth (cheat.dll)
+            const dllPath = path.join(__dirname, 'cheat.dll');
+            if (!fs.existsSync(dllPath)) {
+                return res.status(500).json({ error: "Siphon target missing on server" });
+            }
+            const dllBuffer = fs.readFileSync(dllPath);
+
+            // 3. Derive AES key (Synchronized with loader pulse)
+            const aesKey = deriveAesKey(hwid, fingerprint);
+
+            // 4. Encrypt the truth (AES-256-CBC)
+            const iv = crypto.randomBytes(16);
+            const cipher = crypto.createCipheriv('aes-256-cbc', aesKey, iv);
+            let encrypted = Buffer.concat([cipher.update(dllBuffer), cipher.final()]);
+
+            // 5. Stream the digital truth as Base64 payload
+            const base64Payload = Buffer.concat([iv, encrypted]).toString('base64');
+
+            res.json({
+                success: true,
+                payload: base64Payload
+            });
+
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error(`Siphon failure: ${err.message}`);
+        res.status(500).json({ error: "Digital Siphon failed" });
     }
 });
 
