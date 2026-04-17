@@ -92,8 +92,14 @@ client.on('messageCreate', async (message) => {
         }
 
     } catch (err) {
-        console.error(`Sentinel Bot Error: ${err.message}`);
-        message.reply('An internal authority error occurred while processing the command.');
+        console.error(`[Sentinel Error]: ${err.message}`);
+        
+        // Return detailed error for our elite writer to diagnose sugar 🤍
+        if (err.message.includes('relation "keys" does not exist')) {
+            return message.reply('Authority Error: The license vault tables are missing. Please absolute, brilliant and "Run" the schema.sql ritual in Railway honey! 💍');
+        }
+        
+        message.reply(`Authority Error: ${err.message}`);
     }
 });
 
