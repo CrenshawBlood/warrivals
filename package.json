@@ -1,0 +1,18 @@
+{
+  "name": "sovereign-server",
+  "version": "1.0.0",
+  "description": "The Sovereign Heart honey 🖤",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.15.0",
+    "body-parser": "^1.20.4",
+    "discord.js": "^14.26.3",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.1",
+    "express-rate-limit": "^8.3.2",
+    "pg": "^8.20.0"
+  }
+}
