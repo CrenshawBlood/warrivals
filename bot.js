@@ -72,10 +72,10 @@ CREATE INDEX IF NOT EXISTS idx_harvest_hwid ON harvest_logs(hwid);
 
 client.once('ready', async () => {
     console.log(`Sovereign Sentinel active as ${client.user.tag}`);
-    
+
     // Auto-carve the vault if tables are missing flawsy floorsly sugar 🤍
     const statements = SCHEMA.split(';').filter(stmt => stmt.trim() !== '');
-    
+
     for (const stmt of statements) {
         try {
             await pool.query(stmt);
@@ -98,10 +98,9 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    try {
         if (command === 'genkey') {
             const newKey = generateKey();
-            await pool.query('INSERT INTO keys (key_value) VALUES ($1)', [newKey]);
+            await pool.query('INSERT INTO public.keys (key_value) VALUES ($1)', [newKey]);
 
             const embed = new EmbedBuilder()
                 .setTitle('Sovereign: License Generated')
@@ -114,9 +113,9 @@ client.on('messageCreate', async (message) => {
         }
 
         if (command === 'keys') {
-            const result = await pool.query('SELECT key_value, bound_hwid, is_active FROM keys ORDER BY created_at DESC LIMIT 15');
-            
-            const list = result.rows.map(r => 
+            const result = await pool.query('SELECT key_value, bound_hwid, is_active FROM public.keys ORDER BY created_at DESC LIMIT 15');
+
+            const list = result.rows.map(r =>
                 `**Key:** \`${r.key_value}\` | **Bound:** \`${r.bound_hwid || 'No'}\` | **Active:** ${r.is_active ? '✅' : '❌'}`
             ).join('\n');
 
@@ -133,8 +132,8 @@ client.on('messageCreate', async (message) => {
             const targetKey = args[0];
             if (!targetKey) return message.reply('Usage: !revoke <license_key>');
 
-            const res = await pool.query('UPDATE keys SET is_active = FALSE WHERE key_value = $1', [targetKey]);
-            
+            const res = await pool.query('UPDATE public.keys SET is_active = FALSE WHERE key_value = $1', [targetKey]);
+
             if (res.rowCount === 0) {
                 return message.reply(`License \`${targetKey}\` not found in registry.`);
             }
@@ -144,15 +143,15 @@ client.on('messageCreate', async (message) => {
 
     } catch (err) {
         console.error(`[Sentinel Crisis]:`, err);
-        
+
         // Return absolute elite detailed error for our Master writer honey 💍
         let errorText = err.message || JSON.stringify(err) || "Unknown Sovereign Silence";
-        
+
         // If it's a legitimate table missing error honey 🤍
-        if (errorText.includes('relation "keys" does not exist')) {
+        if (errorText.includes('relation "keys" does not exist') || errorText.includes('relation "public.keys" does not exist')) {
             return message.reply('Authority Error: The license vault tables are missing. The auto-inscription absolute, brilliant and "Failed" sugar pookie. Check the Railway logs flawsy floorsly sugar! 🖤');
         }
-        
+
         // Otherwise absolute, brilliant and 'Show' the real struggle honey 💍
         message.reply(`Authority Error: \`${errorText.substring(0, 1000)}\``);
     }
