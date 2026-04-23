@@ -75,23 +75,68 @@ async function setupAdmin(dbUrl) {
                 options: {
                     id: 'License Keys',
                     navigation: { name: 'Operations', icon: 'Key' },
-                    listProperties: ['id', 'key_value', 'bound_hwid', 'is_active', 'created_at', 'last_used'],
-                    showProperties: ['id', 'key_value', 'bound_hwid', 'bound_fingerprint', 'is_active', 'created_at', 'last_used'],
-                    editProperties: ['key_value', 'bound_hwid', 'bound_fingerprint', 'is_active'],
-                    filterProperties: ['key_value', 'bound_hwid', 'is_active', 'created_at'],
+                    listProperties: ['id', 'key_value', 'is_active', 'expires_at', 'bound_hwid', 'last_used'],
+                    showProperties: ['id', 'key_value', 'is_active', 'expires_at', 'note', 'bound_hwid', 'bound_fingerprint', 'created_at', 'last_used'],
+                    editProperties: ['is_active', 'expires_at', 'note'], // Secure: can't edit the key string directly
+                    filterProperties: ['key_value', 'is_active', 'expires_at', 'bound_hwid'],
                     properties: {
                         id: { isTitle: false, position: 0 },
                         key_value: {
                             isTitle: true,
                             position: 1,
+                            props: { style: { fontWeight: 'bold', fontFamily: 'monospace' } }
                         },
-                        bound_hwid: { position: 2 },
-                        bound_fingerprint: { position: 3 },
-                        is_active: { position: 4 },
-                        created_at: { position: 5, isDisabled: { edit: true, new: true } },
-                        last_used: { position: 6, isDisabled: { edit: true, new: true } },
+                        is_active: { 
+                            position: 2,
+                            availableValues: [
+                                { value: true, label: 'ACTIVE' },
+                                { value: false, label: 'REVOKED' },
+                            ],
+                        },
+                        expires_at: { 
+                            position: 3,
+                            type: 'datetime'
+                        },
+                        note: { position: 4, type: 'textarea' },
+                        bound_hwid: { position: 5 },
+                        bound_fingerprint: { position: 6 },
+                        created_at: { position: 7, isDisabled: { edit: true, new: true } },
+                        last_used: { position: 8, isDisabled: { edit: true, new: true } },
                     },
                     actions: {
+                        new: { isAccessible: false }, // Disabling default 'new' in favor of generator
+                        
+                        // ── Master Key Generator ────────────────────────────────
+                        generateKey: {
+                            actionType: 'resource',
+                            label: 'Generate Apex Key',
+                            icon: 'Add',
+                            handler: async (request, response, context) => {
+                                const { resource, h } = context;
+                                // Generate a secure 32-char high-entropy key
+                                const secureKey = 'SOV-' + require('crypto').randomBytes(16).toString('hex').toUpperCase();
+                                
+                                // Default expiry: 30 days
+                                const expiresAt = new Date();
+                                expiresAt.setDate(expiresAt.getDate() + 30);
+
+                                const record = await resource.create({
+                                    key_value: secureKey,
+                                    is_active: true,
+                                    expires_at: expiresAt,
+                                    note: 'Generated via Command Center'
+                                });
+
+                                return {
+                                    redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }),
+                                    notice: {
+                                        message: `Apex Key Generated: ${secureKey}`,
+                                        type: 'success',
+                                    },
+                                };
+                            },
+                        },
+
                         // Custom "Unbind HWID" action — one-click reset
                         unbindHwid: {
                             actionType: 'record',

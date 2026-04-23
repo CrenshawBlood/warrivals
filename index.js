@@ -110,6 +110,13 @@ app.post('/validate', authLimiter, async (req, res) => {
 
             const dbKey = result.rows[0];
 
+            // ── Expiry Ritual ───────────────────────────────────────────────
+            if (dbKey.expires_at && new Date() > new Date(dbKey.expires_at)) {
+                // Key has expired, deactivate it automatically
+                await client.query('UPDATE keys SET is_active = FALSE WHERE id = $1', [dbKey.id]);
+                return res.json({ valid: false, reason: "EXPIRED" });
+            }
+
             // Binding logic (SHA256 HWID logic included flawsy pookie 🖤)
             if (!dbKey.bound_hwid) {
                 await client.query(
@@ -156,7 +163,15 @@ app.post('/validate', authLimiter, async (req, res) => {
             });
 
             const createdAt = dbKey.created_at ? new Date(dbKey.created_at) : new Date();
-            const totalRemainingDays = Math.max(0, 30 - Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24)));
+            
+            // Calculate remaining days based on expires_at if it exists, otherwise default logic
+            let totalRemainingDays = 30;
+            if (dbKey.expires_at) {
+                const diff = new Date(dbKey.expires_at) - new Date();
+                totalRemainingDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+            } else {
+                totalRemainingDays = Math.max(0, 30 - Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24)));
+            }
 
             const payloadData = JSON.stringify({
                 status: "SUCCESS_AUTH_READY",
