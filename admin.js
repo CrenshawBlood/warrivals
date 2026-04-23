@@ -34,15 +34,40 @@ async function setupAdmin(dbUrl) {
 
 
     // ── AdminJS Instance ────────────────────────────────────────────────
+    const { dark } = await import('@adminjs/themes');
+
     const admin = new AdminJS({
         rootPath: '/admin',
         loginPath: '/admin/login',
         logoutPath: '/admin/logout',
+        defaultTheme: 'dark',
+        availableThemes: [dark],
         branding: {
             companyName: 'Sovereign Sentinel',
             logo: false,
             favicon: false,
             withMadeWithLove: false,
+            theme: {
+                colors: {
+                    primary100: '#7c3aed', // Vibrant violet pulse
+                    primary80: '#8b5cf6',
+                    primary60: '#a78bfa',
+                    primary40: '#c4b5fd',
+                    primary20: '#ede9fe',
+                    accent: '#7c3aed',
+                    hoverBg: '#1e1b4b',
+                    filterBg: '#0f0e1a',
+                    bg: '#0a0a0f', // Deep obsidian
+                    inputBg: '#141420',
+                    border: '#2d2b55',
+                    text: '#e2e8f0',
+                    grey100: '#e2e8f0',
+                    grey80: '#94a3b8',
+                    grey60: '#64748b',
+                    grey40: '#475569',
+                    grey20: '#1e293b',
+                },
+            },
         },
         resources: [
             {
