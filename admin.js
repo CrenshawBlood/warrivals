@@ -2,6 +2,9 @@
 // Sovereign Command Center — AdminJS Dashboard Configuration
 // Uses dynamic import() to bridge CJS server → ESM AdminJS v7
 
+const path = require('path');
+const crypto = require('crypto');
+
 /**
  * Initializes the AdminJS dashboard and returns an Express router.
  * All AdminJS packages are ESM-only (v7+), so we use dynamic import().
@@ -10,13 +13,17 @@
  */
 async function setupAdmin(dbUrl) {
     // ── Dynamic ESM imports (AdminJS v7 is ESM-only) ────────────────────
-    const { default: AdminJS } = await import('adminjs');
+    const { default: AdminJS, ComponentLoader } = await import('adminjs');
     const AdminJSExpress = await import('@adminjs/express');
     const { Adapter, Database, Resource } = await import('@adminjs/sql');
     const { default: session } = await import('express-session');
 
     // Register the SQL adapter with AdminJS
     AdminJS.registerAdapter({ Database, Resource });
+
+    // ── Component Loader (Custom War Room Dashboard) ────────────────────
+    const componentLoader = new ComponentLoader();
+    const dashboardComponent = componentLoader.add('WarRoom', path.join(__dirname, 'components', 'dashboard'));
 
     // ── Connect the SQL adapter directly to PostgreSQL ──────────────────
     // Parse the DATABASE_URL into individual Knex connection params
@@ -34,14 +41,23 @@ async function setupAdmin(dbUrl) {
 
 
     // ── AdminJS Instance ────────────────────────────────────────────────
-    const { dark } = await import('@adminjs/themes');
+    let themeConfig = {};
+    try {
+        const { dark } = await import('@adminjs/themes');
+        themeConfig = { defaultTheme: 'dark', availableThemes: [dark] };
+    } catch (e) {
+        console.log('[AdminJS] Themes package not available, using default theme');
+    }
 
     const admin = new AdminJS({
         rootPath: '/admin',
         loginPath: '/admin/login',
         logoutPath: '/admin/logout',
-        defaultTheme: 'dark',
-        availableThemes: [dark],
+        ...themeConfig,
+        componentLoader,
+        dashboard: {
+            component: dashboardComponent,
+        },
         branding: {
             companyName: 'Sovereign Sentinel',
             logo: false,
@@ -49,7 +65,7 @@ async function setupAdmin(dbUrl) {
             withMadeWithLove: false,
             theme: {
                 colors: {
-                    primary100: '#7c3aed', // Vibrant violet pulse
+                    primary100: '#7c3aed',
                     primary80: '#8b5cf6',
                     primary60: '#a78bfa',
                     primary40: '#c4b5fd',
@@ -57,7 +73,7 @@ async function setupAdmin(dbUrl) {
                     accent: '#7c3aed',
                     hoverBg: '#1e1b4b',
                     filterBg: '#0f0e1a',
-                    bg: '#0a0a0f', // Deep obsidian
+                    bg: '#0a0a0f',
                     inputBg: '#141420',
                     border: '#2d2b55',
                     text: '#e2e8f0',
@@ -70,87 +86,96 @@ async function setupAdmin(dbUrl) {
             },
         },
         resources: [
+            // ═══════════════════════════════════════════════════════════════
+            // LICENSE KEYS — The Sovereign Forge
+            // ═══════════════════════════════════════════════════════════════
             {
                 resource: db.table('keys'),
                 options: {
                     id: 'License Keys',
                     navigation: { name: 'Operations', icon: 'Key' },
-                    listProperties: ['id', 'key_value', 'is_active', 'expires_at', 'bound_hwid', 'last_used'],
+                    listProperties: ['id', 'key_value', 'is_active', 'expires_at', 'note', 'bound_hwid', 'last_used'],
                     showProperties: ['id', 'key_value', 'is_active', 'expires_at', 'note', 'bound_hwid', 'bound_fingerprint', 'created_at', 'last_used'],
-                    editProperties: ['is_active', 'expires_at', 'note'], // Secure: can't edit the key string directly
-                    filterProperties: ['key_value', 'is_active', 'expires_at', 'bound_hwid'],
+                    editProperties: ['is_active', 'expires_at', 'note'],
+                    newProperties: ['duration', 'note'],
+                    filterProperties: ['key_value', 'is_active', 'bound_hwid'],
                     properties: {
                         id: { isTitle: false, position: 0 },
                         key_value: {
                             isTitle: true,
                             position: 1,
-                            isDisabled: { new: true }, // Hide in "Forge" form
-                            props: { style: { fontWeight: 'bold', fontFamily: 'monospace' } }
                         },
-                        is_active: { 
+                        is_active: {
                             position: 2,
                             availableValues: [
-                                { value: true, label: 'ACTIVE' },
-                                { value: false, label: 'REVOKED' },
+                                { value: true, label: '🟢 ACTIVE' },
+                                { value: false, label: '🔴 REVOKED' },
                             ],
                         },
-                        expires_at: { 
+                        expires_at: {
                             position: 3,
-                            type: 'datetime'
+                            type: 'datetime',
                         },
                         note: { position: 4, type: 'textarea' },
                         bound_hwid: { position: 5 },
                         bound_fingerprint: { position: 6 },
                         created_at: { position: 7, isDisabled: { edit: true, new: true } },
                         last_used: { position: 8, isDisabled: { edit: true, new: true } },
+
+                        // ── Virtual "Duration" field (only visible in the "Create" form) ──
                         duration: {
                             type: 'string',
-                            position: 9,
+                            position: 0,
                             availableValues: [
-                                { value: 'daily', label: 'DAILY PULSE (24h)' },
-                                { value: 'weekly', label: 'WEEKLY PULSE (7d)' },
-                                { value: 'monthly', label: 'MONTHLY PULSE (30d)' },
-                                { value: 'yearly', label: 'YEARLY PULSE (365d)' },
-                                { value: 'lifetime', label: 'ETERNAL PULSE (Life)' },
+                                { value: 'daily', label: '⚡ DAILY — 24 Hours' },
+                                { value: 'weekly', label: '📅 WEEKLY — 7 Days' },
+                                { value: 'monthly', label: '🗓️ MONTHLY — 30 Days' },
+                                { value: 'lifetime', label: '♾️ LIFETIME — Eternal' },
                             ],
-                            isDisabled: { edit: true, list: true, show: true }, // Only for 'new' form
-                        }
+                            isDisabled: { edit: true, list: true, show: true, filter: true },
+                        },
                     },
                     actions: {
-                        // ── The Sovereign Forge (Sidebar Integration) ───────────
-                        new: { 
-                            icon: 'Add',
+                        // ── The Sovereign Forge ─────────────────────────────────
+                        new: {
                             label: 'Generate New Key',
-                            before: async (request, context) => {
+                            before: async (request) => {
                                 if (request.method === 'post') {
-                                    const { payload } = request;
+                                    const payload = request.payload || {};
                                     const tier = payload.duration || 'monthly';
-                                    let durationDays = 30;
-                                    let prefix = 'SOV-M-';
-                                    let entropy = 12;
 
-                                    if (tier === 'daily') { durationDays = 1; prefix = 'SOV-D-'; }
-                                    else if (tier === 'weekly') { durationDays = 7; prefix = 'SOV-W-'; }
-                                    else if (tier === 'yearly') { durationDays = 365; prefix = 'SOV-Y-'; }
-                                    else if (tier === 'lifetime') { durationDays = 36135; prefix = 'SOV-L-'; entropy = 16; }
+                                    // ── Duration → Days mapping ──
+                                    const tierMap = {
+                                        daily:    { days: 1,     prefix: 'SOV-D', entropy: 12 },
+                                        weekly:   { days: 7,     prefix: 'SOV-W', entropy: 12 },
+                                        monthly:  { days: 30,    prefix: 'SOV-M', entropy: 12 },
+                                        lifetime: { days: 36500, prefix: 'SOV-L', entropy: 16 },
+                                    };
 
-                                    const secureKey = prefix + require('crypto').randomBytes(entropy).toString('hex').toUpperCase();
-                                    const exp = new Date(); 
-                                    exp.setDate(exp.getDate() + durationDays);
+                                    const config = tierMap[tier] || tierMap.monthly;
 
-                                    // Inject our generated values into the payload
-                                    payload.key_value = secureKey;
-                                    payload.is_active = true;
-                                    payload.expires_at = exp;
-                                    payload.note = payload.note || `Forged ${tier} pulse`;
-                                    
-                                    request.payload = payload;
+                                    // ── Generate high-entropy key ──
+                                    const hexPart = crypto.randomBytes(config.entropy).toString('hex').toUpperCase();
+                                    const secureKey = `${config.prefix}-${hexPart}`;
+
+                                    // ── Calculate expiry ──
+                                    const expiresAt = new Date();
+                                    expiresAt.setDate(expiresAt.getDate() + config.days);
+
+                                    // ── Inject into payload ──
+                                    request.payload = {
+                                        ...payload,
+                                        key_value: secureKey,
+                                        is_active: true,
+                                        expires_at: expiresAt.toISOString(),
+                                        note: payload.note || `${tier.charAt(0).toUpperCase() + tier.slice(1)} Pulse`,
+                                    };
                                 }
                                 return request;
-                            }
+                            },
                         },
 
-                        // Custom "Unbind HWID" action — one-click reset
+                        // ── Unbind HWID — one-click reset ───────────────────────
                         unbindHwid: {
                             actionType: 'record',
                             label: 'Unbind HWID',
@@ -172,7 +197,8 @@ async function setupAdmin(dbUrl) {
                             },
                             component: false,
                         },
-                        // Custom "Revoke" action — instant kill-switch
+
+                        // ── Revoke Key — instant kill-switch ────────────────────
                         revoke: {
                             actionType: 'record',
                             label: 'Revoke Key',
@@ -195,6 +221,10 @@ async function setupAdmin(dbUrl) {
                     },
                 },
             },
+
+            // ═══════════════════════════════════════════════════════════════
+            // HARVEST INTEL — Read-Only Intelligence Feed
+            // ═══════════════════════════════════════════════════════════════
             {
                 resource: db.table('harvest_logs'),
                 options: {
