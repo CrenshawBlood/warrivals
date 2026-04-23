@@ -104,36 +104,72 @@ async function setupAdmin(dbUrl) {
                         last_used: { position: 8, isDisabled: { edit: true, new: true } },
                     },
                     actions: {
-                        new: { isAccessible: false }, // Disabling default 'new' in favor of generator
-                        
-                        // ── Master Key Generator ────────────────────────────────
-                        generateKey: {
+                        new: { isAccessible: false }, // Disabling default 'new'
+
+                        // ── Apex Tier Generators ────────────────────────────────
+                        genDaily: {
                             actionType: 'resource',
-                            label: 'Generate Apex Key',
+                            label: 'Gen: Daily Pulse',
                             icon: 'Add',
+                            component: false, // Fixes the "missing component" error
                             handler: async (request, response, context) => {
                                 const { resource, h } = context;
-                                // Generate a secure 32-char high-entropy key
-                                const secureKey = 'SOV-' + require('crypto').randomBytes(16).toString('hex').toUpperCase();
-                                
-                                // Default expiry: 30 days
-                                const expiresAt = new Date();
-                                expiresAt.setDate(expiresAt.getDate() + 30);
-
-                                const record = await resource.create({
-                                    key_value: secureKey,
-                                    is_active: true,
-                                    expires_at: expiresAt,
-                                    note: 'Generated via Command Center'
-                                });
-
-                                return {
-                                    redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }),
-                                    notice: {
-                                        message: `Apex Key Generated: ${secureKey}`,
-                                        type: 'success',
-                                    },
-                                };
+                                const secureKey = 'SOV-D-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
+                                const exp = new Date(); exp.setHours(exp.getHours() + 24);
+                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Daily Pulse' });
+                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Daily Generated: ${secureKey}`, type: 'success' } };
+                            },
+                        },
+                        genWeekly: {
+                            actionType: 'resource',
+                            label: 'Gen: Weekly Pulse',
+                            icon: 'Add',
+                            component: false,
+                            handler: async (request, response, context) => {
+                                const { resource, h } = context;
+                                const secureKey = 'SOV-W-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
+                                const exp = new Date(); exp.setDate(exp.getDate() + 7);
+                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Weekly Pulse' });
+                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Weekly Generated: ${secureKey}`, type: 'success' } };
+                            },
+                        },
+                        genMonthly: {
+                            actionType: 'resource',
+                            label: 'Gen: Monthly Pulse',
+                            icon: 'Add',
+                            component: false,
+                            handler: async (request, response, context) => {
+                                const { resource, h } = context;
+                                const secureKey = 'SOV-M-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
+                                const exp = new Date(); exp.setDate(exp.getDate() + 30);
+                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Monthly Pulse' });
+                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Monthly Generated: ${secureKey}`, type: 'success' } };
+                            },
+                        },
+                        genYearly: {
+                            actionType: 'resource',
+                            label: 'Gen: Yearly Pulse',
+                            icon: 'Add',
+                            component: false,
+                            handler: async (request, response, context) => {
+                                const { resource, h } = context;
+                                const secureKey = 'SOV-Y-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
+                                const exp = new Date(); exp.setFullYear(exp.getFullYear() + 1);
+                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Yearly Pulse' });
+                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Yearly Generated: ${secureKey}`, type: 'success' } };
+                            },
+                        },
+                        genLifetime: {
+                            actionType: 'resource',
+                            label: 'Gen: Eternal Pulse',
+                            icon: 'Add',
+                            component: false,
+                            handler: async (request, response, context) => {
+                                const { resource, h } = context;
+                                const secureKey = 'SOV-L-' + require('crypto').randomBytes(16).toString('hex').toUpperCase();
+                                const exp = new Date(); exp.setFullYear(exp.getFullYear() + 99); // 99 years is lifetime sugar 🖤
+                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Eternal Pulse' });
+                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Eternal Key Generated: ${secureKey}`, type: 'success' } };
                             },
                         },
 
