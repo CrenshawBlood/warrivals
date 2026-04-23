@@ -75,21 +75,16 @@ async function setupAdmin(dbUrl) {
                 options: {
                     id: 'License Keys',
                     navigation: { name: 'Operations', icon: 'Key' },
-                    listProperties: ['discord_user', 'key_value', 'is_active', 'expires_at', 'last_used'],
-                    showProperties: ['id', 'discord_user', 'key_value', 'is_active', 'expires_at', 'note', 'bound_hwid', 'bound_fingerprint', 'created_at', 'last_used'],
-                    editProperties: ['discord_user', 'is_active', 'expires_at', 'note'],
-                    filterProperties: ['discord_user', 'key_value', 'is_active', 'expires_at'],
+                    listProperties: ['id', 'key_value', 'is_active', 'expires_at', 'bound_hwid', 'last_used'],
+                    showProperties: ['id', 'key_value', 'is_active', 'expires_at', 'note', 'bound_hwid', 'bound_fingerprint', 'created_at', 'last_used'],
+                    editProperties: ['is_active', 'expires_at', 'note'], // Secure: can't edit the key string directly
+                    filterProperties: ['key_value', 'is_active', 'expires_at', 'bound_hwid'],
                     properties: {
-                        id: { isVisible: false }, // Hide the raw ID number
-                        discord_user: {
-                            isTitle: true,
-                            position: 0,
-                            label: 'Sovereign Identity',
-                            props: { style: { fontWeight: 'bold', color: '#a78bfa' } }
-                        },
+                        id: { isTitle: false, position: 0 },
                         key_value: {
+                            isTitle: true,
                             position: 1,
-                            props: { style: { fontFamily: 'monospace' } }
+                            props: { style: { fontWeight: 'bold', fontFamily: 'monospace' } }
                         },
                         is_active: { 
                             position: 2,

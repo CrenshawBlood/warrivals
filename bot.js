@@ -116,8 +116,7 @@ client.on('messageCreate', async (message) => {
     try {
         if (command === 'genkey') {
             const newKey = generateKey();
-            const requester = message.author.tag; // Get username#discriminator
-            await pool.query('INSERT INTO public.keys (key_value, discord_user) VALUES ($1, $2)', [newKey, requester]);
+            await pool.query('INSERT INTO public.keys (key_value) VALUES ($1)', [newKey]);
 
             const embed = new EmbedBuilder()
                 .setTitle('Sovereign: License Generated')
