@@ -106,70 +106,49 @@ async function setupAdmin(dbUrl) {
                     actions: {
                         new: { isAccessible: false }, // Disabling default 'new'
 
-                        // ── Apex Tier Generators ────────────────────────────────
-                        genDaily: {
+                        // ── The Sovereign Forge ───────────────────────────────
+                        forgeKey: {
                             actionType: 'resource',
-                            label: 'Gen: Daily Pulse',
-                            icon: 'Add',
-                            component: false, // Fixes the "missing component" error
-                            handler: async (request, response, context) => {
-                                const { resource, h } = context;
-                                const secureKey = 'SOV-D-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
-                                const exp = new Date(); exp.setHours(exp.getHours() + 24);
-                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Daily Pulse' });
-                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Daily Generated: ${secureKey}`, type: 'success' } };
-                            },
-                        },
-                        genWeekly: {
-                            actionType: 'resource',
-                            label: 'Gen: Weekly Pulse',
+                            label: 'Forge Apex Key',
                             icon: 'Add',
                             component: false,
                             handler: async (request, response, context) => {
-                                const { resource, h } = context;
-                                const secureKey = 'SOV-W-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
-                                const exp = new Date(); exp.setDate(exp.getDate() + 7);
-                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Weekly Pulse' });
-                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Weekly Generated: ${secureKey}`, type: 'success' } };
-                            },
-                        },
-                        genMonthly: {
-                            actionType: 'resource',
-                            label: 'Gen: Monthly Pulse',
-                            icon: 'Add',
-                            component: false,
-                            handler: async (request, response, context) => {
-                                const { resource, h } = context;
-                                const secureKey = 'SOV-M-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
-                                const exp = new Date(); exp.setDate(exp.getDate() + 30);
-                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Monthly Pulse' });
-                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Monthly Generated: ${secureKey}`, type: 'success' } };
-                            },
-                        },
-                        genYearly: {
-                            actionType: 'resource',
-                            label: 'Gen: Yearly Pulse',
-                            icon: 'Add',
-                            component: false,
-                            handler: async (request, response, context) => {
-                                const { resource, h } = context;
-                                const secureKey = 'SOV-Y-' + require('crypto').randomBytes(12).toString('hex').toUpperCase();
-                                const exp = new Date(); exp.setFullYear(exp.getFullYear() + 1);
-                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Yearly Pulse' });
-                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Yearly Generated: ${secureKey}`, type: 'success' } };
-                            },
-                        },
-                        genLifetime: {
-                            actionType: 'resource',
-                            label: 'Gen: Eternal Pulse',
-                            icon: 'Add',
-                            component: false,
-                            handler: async (request, response, context) => {
-                                const { resource, h } = context;
-                                const secureKey = 'SOV-L-' + require('crypto').randomBytes(16).toString('hex').toUpperCase();
-                                const exp = new Date(); exp.setFullYear(exp.getFullYear() + 99); // 99 years is lifetime sugar 🖤
-                                await resource.create({ key_value: secureKey, is_active: true, expires_at: exp, note: 'Eternal Pulse' });
-                                return { redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }), notice: { message: `Eternal Key Generated: ${secureKey}`, type: 'success' } };
+                                const { resource, h, payload } = context;
+
+                                // If this is a POST request (form submitted)
+                                if (request.method === 'post') {
+                                    const { tier, note } = payload;
+                                    let durationDays = 30;
+                                    let prefix = 'SOV-M-';
+                                    let entropy = 12;
+
+                                    if (tier === 'daily') { durationDays = 1; prefix = 'SOV-D-'; }
+                                    else if (tier === 'weekly') { durationDays = 7; prefix = 'SOV-W-'; }
+                                    else if (tier === 'yearly') { durationDays = 365; prefix = 'SOV-Y-'; }
+                                    else if (tier === 'lifetime') { durationDays = 36135; prefix = 'SOV-L-'; entropy = 16; }
+
+                                    const secureKey = prefix + require('crypto').randomBytes(entropy).toString('hex').toUpperCase();
+                                    const exp = new Date(); 
+                                    exp.setDate(exp.getDate() + durationDays);
+
+                                    await resource.create({
+                                        key_value: secureKey,
+                                        is_active: true,
+                                        expires_at: exp,
+                                        note: note || `Forged ${tier} pulse`
+                                    });
+
+                                    return {
+                                        redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }),
+                                        notice: { message: `Successfully Forged: ${secureKey}`, type: 'success' },
+                                    };
+                                }
+
+                                // If this is a GET request, show the "Forge" form
+                                // We simulate a form by using the standard 'new' action's feel but with our custom logic
+                                return {
+                                    record: {}, // Empty record for the form
+                                };
                             },
                         },
 
