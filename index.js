@@ -236,6 +236,22 @@ app.get('/', (req, res) => {
     res.status(200).send("Status: Operational");
 });
 
-app.listen(port, () => {
-    console.log(`Sovereign Sentinel active on port ${port}`);
-});
+// ── Sovereign Command Center (AdminJS Dashboard) ────────────────────────
+const { setupAdmin } = require('./admin');
+
+async function bootstrap() {
+    try {
+        const { admin, router } = await setupAdmin(dbUrl);
+        app.use(admin.options.rootPath, router);
+        console.log(`[AdminJS] Command Center mounted at ${admin.options.rootPath}`);
+    } catch (err) {
+        console.error(`[AdminJS] Dashboard initialization failed: ${err.message}`);
+        console.error(`[AdminJS] Server will continue without admin panel.`);
+    }
+
+    app.listen(port, () => {
+        console.log(`Sovereign Sentinel active on port ${port}`);
+    });
+}
+
+bootstrap();
