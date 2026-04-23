@@ -63,46 +63,29 @@ const WarRoom = () => {
         setCopied(false);
 
         try {
-            const tierMap = {
-                daily:    { days: 1,     prefix: 'SOV-D', entropy: 12 },
-                weekly:   { days: 7,     prefix: 'SOV-W', entropy: 12 },
-                monthly:  { days: 30,    prefix: 'SOV-M', entropy: 12 },
-                lifetime: { days: 36500, prefix: 'SOV-L', entropy: 16 },
-            };
-            const config = tierMap[forgeTier] || tierMap.monthly;
-
-            // Generate key client-side for display, but create via API
-            const arr = new Uint8Array(config.entropy);
-            window.crypto.getRandomValues(arr);
-            const hexPart = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-            const secureKey = `${config.prefix}-${hexPart}`;
-
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + config.days);
-
-            const response = await api.resourceAction({
-                resourceId: 'License Keys',
-                actionName: 'new',
-                method: 'post',
-                data: {
-                    key_value: secureKey,
-                    is_active: true,
-                    expires_at: expiresAt.toISOString(),
-                    duration: forgeTier,
-                    note: forgeNote || `${forgeTier.charAt(0).toUpperCase() + forgeTier.slice(1)} Pulse`,
-                },
+            const response = await fetch('/api/forge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tier: forgeTier,
+                    note: forgeNote || undefined,
+                }),
             });
 
-            setForgeResult({
-                success: true,
-                key: secureKey,
-                tier: forgeTier,
-                expires: expiresAt.toLocaleDateString(),
-            });
+            const data = await response.json();
 
-            // Refresh stats
-            fetchStats();
-
+            if (data.success) {
+                setForgeResult({
+                    success: true,
+                    key: data.key,
+                    tier: data.tier,
+                    expires: new Date(data.expires).toLocaleDateString(),
+                });
+                // Refresh stats
+                fetchStats();
+            } else {
+                setForgeResult({ success: false, error: data.error || 'Unknown error' });
+            }
         } catch (err) {
             console.error('Forge failed:', err);
             setForgeResult({ success: false, error: err.message });

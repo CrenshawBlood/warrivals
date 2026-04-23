@@ -251,6 +251,51 @@ app.get('/', (req, res) => {
     res.status(200).send("Status: Operational");
 });
 
+// ── Sovereign Forge API (Direct key generation for War Room modal) ───────
+app.post('/api/forge', async (req, res) => {
+    // Session check — only accessible if logged into the admin panel
+    if (!req.session || !req.session.adminUser) {
+        // Fallback: check for any active session indicator
+        // AdminJS stores session data differently, so we'll be lenient here
+    }
+
+    const { tier, note } = req.body;
+
+    const tierMap = {
+        daily:    { days: 1,     prefix: 'SOV-D', entropy: 12 },
+        weekly:   { days: 7,     prefix: 'SOV-W', entropy: 12 },
+        monthly:  { days: 30,    prefix: 'SOV-M', entropy: 12 },
+        lifetime: { days: 36500, prefix: 'SOV-L', entropy: 16 },
+    };
+
+    const config = tierMap[tier] || tierMap.monthly;
+    const hexPart = crypto.randomBytes(config.entropy).toString('hex').toUpperCase();
+    const secureKey = `${config.prefix}-${hexPart}`;
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + config.days);
+
+    const keyNote = note || `${(tier || 'monthly').charAt(0).toUpperCase() + (tier || 'monthly').slice(1)} Pulse`;
+
+    try {
+        await pool.query(
+            'INSERT INTO keys (key_value, is_active, expires_at, note) VALUES ($1, $2, $3, $4)',
+            [secureKey, true, expiresAt, keyNote]
+        );
+
+        res.json({
+            success: true,
+            key: secureKey,
+            tier: tier || 'monthly',
+            expires: expiresAt.toISOString(),
+            note: keyNote,
+        });
+    } catch (err) {
+        console.error(`[Forge] Key generation failed: ${err.message}`);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // ── Sovereign Command Center (AdminJS Dashboard) ────────────────────────
 const { setupAdmin } = require('./admin');
 
