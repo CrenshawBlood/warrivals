@@ -137,42 +137,10 @@ async function setupAdmin(dbUrl) {
                     },
                     actions: {
                         // ── The Sovereign Forge ─────────────────────────────────
+                        // Key generation is handled by /api/forge endpoint
+                        // This 'new' action is kept as a manual fallback
                         new: {
-                            label: 'Generate New Key',
-                            before: async (request) => {
-                                if (request.method === 'post') {
-                                    const payload = request.payload || {};
-                                    const tier = payload.duration || 'monthly';
-
-                                    // ── Duration → Days mapping ──
-                                    const tierMap = {
-                                        daily:    { days: 1,     prefix: 'SOV-D', entropy: 12 },
-                                        weekly:   { days: 7,     prefix: 'SOV-W', entropy: 12 },
-                                        monthly:  { days: 30,    prefix: 'SOV-M', entropy: 12 },
-                                        lifetime: { days: 36500, prefix: 'SOV-L', entropy: 16 },
-                                    };
-
-                                    const config = tierMap[tier] || tierMap.monthly;
-
-                                    // ── Generate high-entropy key ──
-                                    const hexPart = crypto.randomBytes(config.entropy).toString('hex').toUpperCase();
-                                    const secureKey = `${config.prefix}-${hexPart}`;
-
-                                    // ── Calculate expiry ──
-                                    const expiresAt = new Date();
-                                    expiresAt.setDate(expiresAt.getDate() + config.days);
-
-                                    // ── Inject into payload ──
-                                    request.payload = {
-                                        ...payload,
-                                        key_value: secureKey,
-                                        is_active: true,
-                                        expires_at: expiresAt.toISOString(),
-                                        note: payload.note || `${tier.charAt(0).toUpperCase() + tier.slice(1)} Pulse`,
-                                    };
-                                }
-                                return request;
-                            },
+                            label: 'Manual Key Entry',
                         },
 
                         // ── Unbind HWID — one-click reset ───────────────────────
@@ -260,25 +228,34 @@ async function setupAdmin(dbUrl) {
         ],
     });
 
-    // ── Authentication ──────────────────────────────────────────────────
-    const adminEmail = process.env.ADMIN_EMAIL || 'sovereign@admin.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'SovereignElite2026!';
+    // ── Authentication (Hardened — NO fallback credentials) ────────────
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const baseSecret = process.env.BASE_SECRET;
+
+    if (!adminEmail || !adminPassword) {
+        console.warn('[AdminJS] ⚠ ADMIN_EMAIL or ADMIN_PASSWORD not set — dashboard login disabled');
+    }
+    if (!baseSecret) {
+        console.warn('[AdminJS] ⚠ BASE_SECRET not set — using fallback (not recommended for production)');
+    }
 
     const router = AdminJSExpress.buildAuthenticatedRouter(
         admin,
         {
             authenticate: async (email, password) => {
+                if (!adminEmail || !adminPassword) return null; // No creds = no entry
                 if (email === adminEmail && password === adminPassword) {
                     return { email: adminEmail, title: 'Sovereign Commander' };
                 }
                 return null;
             },
             cookieName: 'sovereign-session',
-            cookiePassword: process.env.BASE_SECRET || 'sovereign-fallback-cookie-secret-32chars!!',
+            cookiePassword: baseSecret || 'sovereign-fallback-cookie-secret-32chars!!',
         },
         null,
         {
-            secret: process.env.BASE_SECRET || 'sovereign-session-secret-32chars-minimum!!',
+            secret: baseSecret || 'sovereign-session-secret-32chars-minimum!!',
             resave: false,
             saveUninitialized: false,
             cookie: {

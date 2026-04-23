@@ -10,6 +10,7 @@ const { Pool } = require('pg');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const session = require('express-session');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -25,6 +26,20 @@ const pool = new Pool({
 });
 
 app.use(express.json());
+
+// ── Shared Session Middleware ────────────────────────────────────────────
+// Must use the SAME secret and cookie name as AdminJS so sessions are shared
+app.use(session({
+    secret: process.env.BASE_SECRET || 'sovereign-session-secret-32chars-minimum!!',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000,
+    },
+    name: 'connect.sid',
+}));
 
 // Rate Limiting: 5 requests per minute per IP
 const authLimiter = rateLimit({
@@ -252,11 +267,11 @@ app.get('/', (req, res) => {
 });
 
 // ── Sovereign Forge API (Direct key generation for War Room modal) ───────
+// SECURITY: Requires active admin session — unauthenticated requests get 401
 app.post('/api/forge', async (req, res) => {
-    // Session check — only accessible if logged into the admin panel
+    // AdminJS stores the authenticated user in req.session.adminUser
     if (!req.session || !req.session.adminUser) {
-        // Fallback: check for any active session indicator
-        // AdminJS stores session data differently, so we'll be lenient here
+        return res.status(401).json({ success: false, error: 'Unauthorized — admin login required' });
     }
 
     const { tier, note } = req.body;
