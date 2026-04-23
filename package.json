@@ -4,15 +4,11 @@
   "description": "The Sovereign Heart honey 🖤",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "start:both": "concurrently \"node index.js\" \"node bot.js\"",
-    "start:server": "node index.js",
-    "start:bot": "node bot.js"
+    "start": "node launch.js"
   },
   "dependencies": {
     "@adminjs/express": "^6.1.1",
     "@adminjs/sql": "^2.2.6",
-    "@adminjs/themes": "^1.0.1",
     "adminjs": "^7.8.17",
     "axios": "^1.15.0",
     "body-parser": "^1.20.4",
