@@ -84,6 +84,7 @@ async function setupAdmin(dbUrl) {
                         key_value: {
                             isTitle: true,
                             position: 1,
+                            isDisabled: { new: true }, // Hide in "Forge" form
                             props: { style: { fontWeight: 'bold', fontFamily: 'monospace' } }
                         },
                         is_active: { 
@@ -102,22 +103,28 @@ async function setupAdmin(dbUrl) {
                         bound_fingerprint: { position: 6 },
                         created_at: { position: 7, isDisabled: { edit: true, new: true } },
                         last_used: { position: 8, isDisabled: { edit: true, new: true } },
+                        duration: {
+                            type: 'string',
+                            position: 9,
+                            availableValues: [
+                                { value: 'daily', label: 'DAILY PULSE (24h)' },
+                                { value: 'weekly', label: 'WEEKLY PULSE (7d)' },
+                                { value: 'monthly', label: 'MONTHLY PULSE (30d)' },
+                                { value: 'yearly', label: 'YEARLY PULSE (365d)' },
+                                { value: 'lifetime', label: 'ETERNAL PULSE (Life)' },
+                            ],
+                            isDisabled: { edit: true, list: true, show: true }, // Only for 'new' form
+                        }
                     },
                     actions: {
-                        new: { isAccessible: false }, // Disabling default 'new'
-
-                        // ── The Sovereign Forge ───────────────────────────────
-                        forgeKey: {
-                            actionType: 'resource',
-                            label: 'Forge Apex Key',
+                        // ── The Sovereign Forge (Sidebar Integration) ───────────
+                        new: { 
                             icon: 'Add',
-                            component: false,
-                            handler: async (request, response, context) => {
-                                const { resource, h, payload } = context;
-
-                                // If this is a POST request (form submitted)
+                            label: 'Generate New Key',
+                            before: async (request, context) => {
                                 if (request.method === 'post') {
-                                    const { tier, note } = payload;
+                                    const { payload } = request;
+                                    const tier = payload.duration || 'monthly';
                                     let durationDays = 30;
                                     let prefix = 'SOV-M-';
                                     let entropy = 12;
@@ -131,25 +138,16 @@ async function setupAdmin(dbUrl) {
                                     const exp = new Date(); 
                                     exp.setDate(exp.getDate() + durationDays);
 
-                                    await resource.create({
-                                        key_value: secureKey,
-                                        is_active: true,
-                                        expires_at: exp,
-                                        note: note || `Forged ${tier} pulse`
-                                    });
-
-                                    return {
-                                        redirectUrl: h.resourceActionUrl({ resourceId: resource.id(), actionName: 'list' }),
-                                        notice: { message: `Successfully Forged: ${secureKey}`, type: 'success' },
-                                    };
+                                    // Inject our generated values into the payload
+                                    payload.key_value = secureKey;
+                                    payload.is_active = true;
+                                    payload.expires_at = exp;
+                                    payload.note = payload.note || `Forged ${tier} pulse`;
+                                    
+                                    request.payload = payload;
                                 }
-
-                                // If this is a GET request, show the "Forge" form
-                                // We simulate a form by using the standard 'new' action's feel but with our custom logic
-                                return {
-                                    record: {}, // Empty record for the form
-                                };
-                            },
+                                return request;
+                            }
                         },
 
                         // Custom "Unbind HWID" action — one-click reset
