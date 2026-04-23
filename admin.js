@@ -19,13 +19,19 @@ async function setupAdmin(dbUrl) {
     AdminJS.registerAdapter({ Database, Resource });
 
     // ── Connect the SQL adapter directly to PostgreSQL ──────────────────
+    // Parse the DATABASE_URL into individual Knex connection params
+    // (the @adminjs/sql Adapter can be picky about raw connection strings)
+    const parsedUrl = new URL(dbUrl.replace(/^postgres:\/\//, 'postgresql://'));
+
     const db = await new Adapter('postgresql', {
-        connectionString: dbUrl,
-        // Knex requires this for Railway/Supabase SSL connections
-        ...(dbUrl && (dbUrl.includes('railway') || dbUrl.includes('supabase'))
-            ? { ssl: { rejectUnauthorized: false } }
-            : {}),
+        host: parsedUrl.hostname,
+        port: parseInt(parsedUrl.port) || 5432,
+        user: decodeURIComponent(parsedUrl.username),
+        password: decodeURIComponent(parsedUrl.password),
+        database: parsedUrl.pathname.slice(1), // remove leading '/'
+        ssl: { rejectUnauthorized: false },
     }).init();
+
 
     // ── AdminJS Instance ────────────────────────────────────────────────
     const admin = new AdminJS({
