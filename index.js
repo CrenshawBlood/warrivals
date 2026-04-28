@@ -183,16 +183,20 @@ app.post('/validate', authLimiter, async (req, res) => {
             
             // Calculate remaining days based on expires_at if it exists, otherwise default logic
             let totalRemainingDays = 30;
+            let finalExpiryDate = new Date();
             if (dbKey.expires_at) {
-                const diff = new Date(dbKey.expires_at) - new Date();
+                finalExpiryDate = new Date(dbKey.expires_at);
+                const diff = finalExpiryDate - new Date();
                 totalRemainingDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
             } else {
+                finalExpiryDate = new Date(createdAt.getTime() + (30 * 24 * 60 * 60 * 1000));
                 totalRemainingDays = Math.max(0, 30 - Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24)));
             }
 
             const payloadData = JSON.stringify({
                 status: "SUCCESS_AUTH_READY",
                 token: token,
+                expiry: Math.floor(finalExpiryDate.getTime() / 1000).toString(),
                 expiry_days: totalRemainingDays,
                 token_expires_at: new Date(expiresAt).toISOString()
             });
